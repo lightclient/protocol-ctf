@@ -67,6 +67,29 @@ height N". In this case, it's good to go ahead and run the verifier with
 logging on to understand what is stopping the client from processing each
 block.
 
+```console
+$ go run main.go --loglevel=debug
+...
+########## BAD BLOCK #########
+Chain config: {ChainID: 1, Homestead: 0, DAO: <nil>, DAOSupport: false, EIP150: 0, EIP155: 0, EIP158: 0, Byzantium: 0, Constantinople: 0, Petersburg: 0, Istanbul: 0, Muir Glacier: 0, Berlin: 0, London: 0, Arrow Glacier: 0, MergeFork: <nil>, ShanghaiFork: <nil>, CancunFork: <nil>, Terminal TD: <nil>, Engine: ethash}
+
+Number: 1
+Hash: 0x31553f1bb856b900a24d456f51ac4372fa57e08c5a16812db3ff87e63320bf26
+         0: cumulative: 21011 gas: 21011 contract: 0x0000000000000000000000000000000000000000 status: 1 tx: 0x00c8d2ea97ca412f2c474b9dbcdf6e2447e2feb5c7c5cc1b230c5a654dcd2f69 logs: [] bloom: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 state:
+
+
+Error: invalid gas used (remote: 21009 local: 21011)
+##############################
+...
+```
+
+This presents the error `invalid gas used` while processing transaction 0 in
+block 1. There are many reasons a block could fail validation, but this one
+usually occurs when there is an issue in the EVM that causes execution to
+deviate from the canonical trace.
+
+To determine where / why the deviation occurs, there are few approaches.
+
 ## Test Harness
 
 Challenges typically work by importing `chain.rlp` and verifying all blocks are

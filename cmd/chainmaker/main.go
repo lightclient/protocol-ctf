@@ -69,7 +69,6 @@ func main() {
 		x, _ := types.SignTx(tx, types.HomesteadSigner{}, key)
 		block.AddTx(x)
 	})
-	blocks = append([]*types.Block{genesis}, blocks...)
 
 	// Write to disk.
 	err := writeGenesis(gspec, *genesisFilename)
