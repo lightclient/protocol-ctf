@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -46,12 +45,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	lru "github.com/hashicorp/golang-lru"
-)
-
-var (
-	// Git SHA1 commit hash of the release (set via linker flags)
-	gitCommit = ""
-	gitDate   = ""
 )
 
 var (
@@ -2405,11 +2398,7 @@ func (bc *BlockChain) reportBlock(block *types.Block, receipts types.Receipts, e
 			i, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Hex(),
 			receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
 	}
-
-	systemInfo := fmt.Sprintf("%s %s %s %s", params.VersionWithCommit(gitCommit, gitDate), runtime.GOARCH, runtime.Version(), runtime.GOOS)
-
 	log.Error(fmt.Sprintf(`
-
 ########## BAD BLOCK #########
 System info: %v
 Chain config: %v
@@ -2420,7 +2409,7 @@ Hash: %#x
 
 Error: %v
 ##############################
-`, systemInfo, bc.chainConfig.Summary(), block.Number(), block.Hash(), receiptString, err))
+`, params.RuntimeInfo(), bc.chainConfig.Summary(), block.Number(), block.Hash(), receiptString, err))
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local

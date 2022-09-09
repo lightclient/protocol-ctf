@@ -18,6 +18,9 @@ package params
 
 import (
 	"fmt"
+	"runtime"
+	"runtime/debug"
+	"strings"
 )
 
 const (
@@ -25,6 +28,8 @@ const (
 	VersionMinor = 11         // Minor version component of the current release
 	VersionPatch = 0          // Patch version component of the current release
 	VersionMeta  = "unstable" // Version metadata to append to the version string
+
+	ourPath = "github.com/ethereum/go-ethereum" // Path to our module
 )
 
 // Version holds the textual version string.
@@ -64,4 +69,77 @@ func VersionWithCommit(gitCommit, gitDate string) string {
 		vsn += "-" + gitDate
 	}
 	return vsn
+}
+
+// RuntimeInfo returns build and platform information about the current binary.
+//
+// If the package that is currently executing is a prefixed by our go-ethereum
+// module path, it will print out commit and date VCS information. Otherwise,
+// it will assume it's imported by a third-party and will return the imported
+// version and whether it was replaced by another module.
+func RuntimeInfo() string {
+	var (
+		version       = VersionWithMeta
+		buildInfo, ok = debug.ReadBuildInfo()
+	)
+
+	switch {
+	case !ok:
+		// BuildInfo should generally always be set.
+	case strings.HasPrefix(buildInfo.Path, ourPath):
+		// If the main package is from our repo, we can actually
+		// retrieve the VCS information directly from the buildInfo.
+		revision, dirty, date := vcsInfo(buildInfo)
+		version = fmt.Sprintf("geth %s", VersionWithCommit(revision, date))
+		if dirty != "" {
+			version = fmt.Sprintf("%s %s", version, dirty)
+		}
+	default:
+		// Not our main package, probably imported by a different
+		// project. VCS data less relevant here.
+		mod := findModule(buildInfo, ourPath)
+		version = mod.Version
+		if mod.Replace != nil {
+			version = fmt.Sprintf("%s (replaced by %s@%s)", version, mod.Replace.Path, mod.Replace.Version)
+		}
+	}
+	return fmt.Sprintf("%s %s %s %s", version, runtime.Version(), runtime.GOARCH, runtime.GOOS)
+}
+
+// findModule returns the module at path.
+func findModule(info *debug.BuildInfo, path string) *debug.Module {
+	if info.Path == ourPath {
+		return &info.Main
+	}
+	for _, mod := range info.Deps {
+		if mod.Path == path {
+			return mod
+		}
+	}
+	return nil
+}
+
+// vcsInfo returns VCS information regarding the commit, dirty status, and date
+// modified.
+func vcsInfo(info *debug.BuildInfo) (string, string, string) {
+	var (
+		revision = "unknown"
+		dirty    = ""
+		date     = "unknown"
+	)
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, v := range info.Settings {
+			switch v.Key {
+			case "vcs.revision":
+				revision = v.Value
+			case "vcs.modified":
+				if v.Value == "true" {
+					dirty = " (dirty)"
+				}
+			case "vcs.time":
+				date = v.Value
+			}
+		}
+	}
+	return revision, dirty, date
 }
