@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
@@ -27,15 +29,19 @@ import (
 
 func main() {
 	var (
-		logLevel    = flag.String("loglevel", "info", "Log level")
+		logLevelStr = flag.String("loglevel", "error", "Log level")
 		quiet       = flag.Bool("quiet", false, "Don't print any client logs")
-		skipCompile = flag.Bool("skip-compile", false, "Skips compilation")
-		devMode     = flag.Bool("dev", false, "Leaves client open after flag check")
+		consoleMode = flag.Bool("console", false, "Leaves client open after flag check")
 	)
-
 	flag.Parse()
 
-	if err := checkFlag(*logLevel, *skipCompile, !*quiet, *devMode); err != nil {
+	lvl, err := log.LvlFromString(*logLevelStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
+
+	if err := checkFlag(lvl, *quiet, *consoleMode); err != nil {
 		fmt.Fprintf(os.Stderr, "Flag not captured: %s\n", err)
 		os.Exit(1)
 	}
@@ -43,15 +49,23 @@ func main() {
 	fmt.Println("Flag captured.")
 }
 
-func checkFlag(logLevelStr string, skipCompile, verbose, devMode bool) error {
+func checkFlag(logLevel log.Lvl, quiet, consoleMode bool) error {
+	w := (io.Writer)(os.Stderr)
+	if quiet {
+		w = ioutil.Discard
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(w, log.TerminalFormat(true)))
+	glogger.Verbosity(logLevel)
+	log.Root().SetHandler(glogger)
+
 	// Start geth.
 	node, err := runGeth()
 	if err != nil {
-		fmt.Println("erroring out")
 		return err
 	}
 
-	if devMode {
+	// Open console if requested.
+	if consoleMode {
 		err = startConsole(node)
 		if err != nil {
 			return err
@@ -91,7 +105,6 @@ func runGeth() (*node.Node, error) {
 		return nil, err
 	}
 
-	fmt.Println("setting up geth")
 	chain, err := loadChain("chain.rlp", "genesis.json")
 	if err != nil {
 		stack.Close()
@@ -112,7 +125,7 @@ func runGeth() (*node.Node, error) {
 
 	_, err = backend.BlockChain().InsertChain(chain.blocks[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to import chain: %s", err)
+		log.Error("failed to import chain", "err", err)
 	}
 
 	if err = stack.Start(); err != nil {
@@ -206,6 +219,7 @@ func startConsole(stack *node.Node) error {
 		console.StopInteractive()
 	}()
 
+	fmt.Println()
 	console.Welcome()
 	console.Interactive()
 	return nil

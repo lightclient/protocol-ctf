@@ -28,7 +28,7 @@ Next clone this repository.
 git clone https://github.com/lightclient/protocol-ctf.git
 ```
 
-Next, decide a challenge to attempt. The recommended starter
+Now, choose a challenge to attempt. The recommended starter
 challenge is [The Price is Wrong][wrong-price].
 
 Each challenge will have `README.md` explaining the challenge. Generally there
