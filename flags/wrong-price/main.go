@@ -66,9 +66,10 @@ func checkFlag(logLevelStr string, skipCompile, verbose, devMode bool) error {
 	eth := ethclient.NewClient(rpc)
 
 	// Verify flag.
-	block, err := eth.BlockByNumber(context.Background(), common.Big1)
+	ctx := context.Background()
+	block, err := eth.BlockByNumber(ctx, common.Big1)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't load head block")
 	}
 	if block.Hash() != common.HexToHash("0x31553f1bb856b900a24d456f51ac4372fa57e08c5a16812db3ff87e63320bf26") {
 		return fmt.Errorf("could not load chain")
